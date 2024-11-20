@@ -14,16 +14,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"reflect"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	gwruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 )
-
-var _ gwruntime.Marshaler = (*JSONPb)(nil)
 
 var typeProtoMessage = reflect.TypeOf((*proto.Message)(nil)).Elem()
 
@@ -104,33 +100,6 @@ func (j *JSONPb) Unmarshal(data []byte, v interface{}) error {
 	}
 	return errors.Errorf("unexpected type %T does not implement %s", v, typeProtoMessage)
 }
-
-// NewDecoder implements gwruntime.Marshaler.
-func (j *JSONPb) NewDecoder(r io.Reader) gwruntime.Decoder {
-	return gwruntime.DecoderFunc(func(v interface{}) error {
-		// NB: we use proto.Message here because grpc-gateway passes us protos that
-		// we don't control and thus don't implement protoutil.Message.
-		if pb, ok := v.(proto.Message); ok {
-			return jsonpb.Unmarshal(r, pb)
-		}
-		return errors.Errorf("unexpected type %T does not implement %s", v, typeProtoMessage)
-	})
-}
-
-// NewEncoder implements gwruntime.Marshaler.
-func (j *JSONPb) NewEncoder(w io.Writer) gwruntime.Encoder {
-	return gwruntime.EncoderFunc(func(v interface{}) error {
-		// NB: we use proto.Message here because grpc-gateway passes us protos that
-		// we don't control and thus don't implement protoutil.Message.
-		if pb, ok := v.(proto.Message); ok {
-			marshalFn := (*jsonpb.Marshaler)(j).Marshal
-			return marshalFn(w, pb)
-		}
-		return errors.Errorf("unexpected type %T does not implement %s", v, typeProtoMessage)
-	})
-}
-
-var _ gwruntime.Delimited = (*JSONPb)(nil)
 
 // Delimiter implements gwruntime.Delimited.
 func (*JSONPb) Delimiter() []byte {
